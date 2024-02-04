@@ -1,31 +1,44 @@
 // create web server
-// run this file by typing "node comments.js" in terminal
-// then go to "http://localhost:3000/" in the browser
+var http = require('http');
+var url = require('url');
+var items = [];
 
-var express = require('express');
-var app = express();
-var bodyParser = require('body-parser');
-
-app.use(bodyParser.json());
-
-var comments = [
-  { "author": "Pete Hunt", "text": "This is one comment" },
-  { "author": "Jordan Walke", "text": "This is *another* comment" }
-];
-
-app.get('/', function(req, res) {
-  res.send('Hello World');
+var server = http.createServer(function(req, res){
+  switch(req.method){
+    case 'POST':
+      var item = '';
+      req.setEncoding('utf8');
+      req.on('data', function(chunk){
+        item += chunk;
+      });
+      req.on('end', function(){
+        items.push(item);
+        res.end('OK\n');
+      });
+      break;
+    case 'GET':
+      var body = items.map(function(item, i){
+        return i + ') ' + item;
+      }).join('\n');
+      res.setHeader('Content-Length', Buffer.byteLength(body));
+      res.setHeader('Content-Type', 'text/plain; charset="utf-8"');
+      res.end(body);
+      break;
+    case 'DELETE':
+      var path = url.parse(req.url).pathname;
+      var i = parseInt(path.slice(1), 10);
+      if(isNaN(i)){
+        res.statusCode = 400;
+        res.end('Invalid item id');
+      } else if(!items[i]){
+        res.statusCode = 404;
+        res.end('Item not found');
+      } else {
+        items.splice(i, 1);
+        res.end('OK\n');
+      }
+      break;
+  }
 });
 
-app.get('/comments', function(req, res) {
-  res.send(comments);
-});
-
-app.post('/comments', function(req, res) {
-  comments.push(req.body);
-  res.send(comments);
-});
-
-app.listen(3000, function() {
-  console.log('Server is running on port 3000');
-});
+server.listen(3000);
